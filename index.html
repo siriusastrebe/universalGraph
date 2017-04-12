@@ -1,0 +1,301 @@
+<!doctype html>
+<html>
+<head>
+  <script src="d3.v4.js"></script>
+  <script src="moment.js"></script>
+  <style>
+    #redraw, #morph {
+      display: block;
+    }
+
+/*
+    svg {
+      margin-left: 400px;
+    }
+*/
+  </style>
+</head>
+<body>
+<button id="redraw">Redraw</button>
+<button id="morph">Morph</button>
+<svg></svg>
+</body>
+  <script type="text/javascript">
+    // ----------------------------------------------------------------
+    // Data
+    // ----------------------------------------------------------------
+    var data = []
+    var previousData = []
+
+    function randomizeData (length) {
+      previousData = data
+      data = []
+      var randomYear = Math.floor(Math.random() * 10 + 2010)
+      var randomMonth = Math.floor(Math.random() * 12)
+      var timestamp = moment(randomYear)
+      timestamp.add(randomMonth, 'months')
+      var period = Math.floor(Math.random() * 31)
+
+      for (var i = 0; i < length; i++) {
+        data.push({
+          date: timestamp.valueOf(),
+          value: Math.random() * Math.random()
+        })
+
+        timestamp.add(period, 'days')
+      }
+    }
+
+    randomizeData(12)
+
+    // ----------------------------------------------------------------
+    // Graph initialization
+    // ----------------------------------------------------------------
+    var width = 1220
+    var height = 440
+    var marginLeft = 40
+    var marginRight = 20
+    var marginTop = 20
+    var marginBottom = 20
+
+
+    var svg = d3.select('svg')
+      .attr('width', marginLeft + width + marginRight)
+      .attr('height', marginTop + height + marginBottom)
+
+    var xAxis = svg.append('g').attr('id', 'xAxis')
+      .attr('transform', 'translate(0, ' + (marginTop + height) + ')')
+    var yAxis = svg.append('g').attr('id', 'yAxis')
+      .attr('transform', 'translate(' + marginLeft + ', 0)')
+
+    var area = svg.append('path')
+      .attr('id', 'area')
+      .attr('stroke', 'transparent')
+      .attr('fill', 'green')
+      .attr('opacity', 0.4)
+
+    var line = svg.append('path')
+      .attr('id', 'line')
+      .attr('stroke', 'black')
+      .attr('fill', 'transparent')
+
+    var hoverLineY = svg.append('line')
+      .attr('stroke', 'black')
+      .attr('y1', marginTop)
+      .attr('y2', marginTop + height)
+
+    var hoverLineX = svg.append('line')
+      .attr('x1', marginLeft)
+      .attr('stroke', 'black')
+
+    var hoverBubble = svg.append('circle')
+      .attr('r', 6)
+      .attr('fill', 'transparent')
+      .attr('stroke', 'red')
+      .attr('stroke-width', 1)
+
+    var hoverValue = svg.append('text')
+      .attr('x', marginLeft)
+      .attr('text-anchor', 'end')
+
+    var hoverDate = svg.append('text')
+      .attr('y', marginTop + height + 20)
+      .attr('text-anchor', 'middle')
+
+    render()
+
+    var redrawButton = d3.select('#redraw')
+      .on('click', function () {
+        randomizeData(10 + Math.floor(Math.random() * 2))
+        render()
+      })
+
+    var morphButton = d3.select('#morph')
+      .on('click', function () {
+      })
+
+    // ----------------------------------------------------------------
+    // Render Function
+    // ----------------------------------------------------------------
+    function render () {
+      // Scale setup
+      var xScale = d3.scaleTime()
+        .domain(d3.extent(data, function (d) { return moment(d.date) }))
+        .range([marginLeft, marginLeft + width])
+
+      var xLabels = d3.axisBottom(xScale)
+
+      xAxis.transition()
+        .call(xLabels)
+
+      var yScale = d3.scaleLinear()
+        .domain(d3.extent(data, function (d) { return d.value }))
+        .range([marginTop + height, marginTop])
+
+      var yLabels = d3.axisLeft(yScale)
+//        .tickSize(-width)
+        .ticks(6)
+
+      yAxis.transition()
+        .call(yLabels)
+
+      // Drawing the path
+      var blankAreaPoints = d3.area()
+        .curve(d3.curveLinear)
+        .x(function (d) { return xScale(moment(d.date)) })
+        .y0(marginTop + height)
+        .y1(marginTop + height)
+
+      var blankLinePoints = d3.line()
+        .curve(d3.curveLinear)
+        .x(function (d) { return xScale(moment(d.date)) })
+        .y(marginTop + height)
+
+      var areaPoints = d3.area()
+        .curve(d3.curveLinear)
+        .x(function (d) { return xScale(moment(d.date)) })
+        .y0(marginTop + height)
+        .y1(function (d) { return yScale(d.value) })
+
+      var linePoints = d3.line()
+        .curve(d3.curveLinear)
+        .x(function (d) { return xScale(moment(d.date)) })
+        .y(function (d) { return yScale(d.value) })
+
+      area.datum(data)
+      line.datum(data)
+
+      if (data.length !== previousData.length) {
+        area.attr('d', blankAreaPoints)
+        line.attr('d', blankLinePoints)
+      }
+
+      area
+        .transition()
+        .attr('d', areaPoints)
+
+      line
+        .transition()
+        .attr('d', linePoints)
+
+      // Creating the bars
+      var barWidth = (xScale.range()[1] - xScale.range()[0]) / (data.length)
+
+      var bars = svg.selectAll('rect')
+        .data(data)
+
+      bars
+        .enter()
+        .append('rect')
+        .attr('fill', 'red')
+        .attr('stroke', 'black')
+        .attr('opacity', 0.3)
+
+      bars
+        .exit()
+        .remove()
+
+      var bars = svg.selectAll('rect')
+          .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
+          .attr('width', function (d) { return barWidth })
+
+      if (data.length !== previousData.length) {
+        bars
+          .attr('y', marginTop + height)
+          .attr('height', 0)
+      }
+
+      var bars = svg.selectAll('rect')
+        .transition()
+        .attr('y', function (d) { return yScale(d.value) })
+        .attr('height', function (d) { return (marginTop + height) - yScale(d.value) })
+
+      // Mouse hover
+      svg.on('mousemove', function () { 
+        var event = d3.event        
+        var x = event.offsetX
+      
+        if (x < marginLeft) x = marginLeft
+        if (x > marginLeft + width) x = marginLeft + width
+
+        var y = getYAtX(x)
+
+        var value = yScale.invert(y)
+        var date = xScale.invert(x)
+
+        hoverValue
+          .attr('y', y)
+          .text(String(value).substring(0, 4))
+
+        // Hide y axis value indicators when hovering
+        svg.selectAll('#yAxis .tick')
+          .each(function () {
+            var tick = d3.select(this)
+            var transform = tick.attr('transform')
+            var transformY = transform.substring(transform.indexOf(',') + 1, transform.length - 1)
+
+            if (Math.abs(Number(transformY) - y) < 30) {
+              tick.transition().duration(100)
+                .attr('opacity', 0)
+            } else {
+              tick.transition().duration(100)
+                .attr('opacity', 1)
+            }
+          })
+
+        hoverDate
+          .attr('x', x)
+          .text(moment(date).format('MM-DD'))
+
+        // Hide x axis value indicators when hovering
+        svg.selectAll('#xAxis .tick')
+          .each(function () {
+            var tick = d3.select(this)
+            var transform = tick.attr('transform')
+            var transformX = transform.substring(transform.indexOf('(') + 1, transform.indexOf(','))
+
+            if (Math.abs(Number(transformX) - x) < 50) {
+              tick.transition().duration(100)
+                .attr('opacity', 0)
+            } else {
+              tick.transition().duration(100)
+                .attr('opacity', 1)
+            }
+          })
+
+        hoverLineY
+          .attr('x2', x)
+          .attr('x1', x)
+          .attr('y1', y)
+
+       hoverLineX
+         .attr('x2', x)
+         .attr('y2', y)
+         .attr('y1', y)
+
+       hoverBubble
+         .attr('cx', x)
+         .attr('cy', y)
+      })
+    }
+
+    function getYAtX (x) {
+      var lineNode = line.node()
+      var lineLength = lineNode.getTotalLength()
+
+      return search(0, lineLength)
+
+      function search (lower, upper) {
+        var coords = lineNode.getPointAtLength((lower + upper) / 2)
+        if (Math.abs(coords.x - x) < 2) {
+          return coords.y
+        } else if (coords.x > x) {
+          return search(lower, (lower + upper) / 2)
+        } else {
+          return search((lower + upper) / 2, upper)
+        }
+      }
+    }
+
+  </script>
+</html>
