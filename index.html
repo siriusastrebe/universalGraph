@@ -91,7 +91,7 @@
     var hoverBubble = svg.append('circle')
       .attr('r', 6)
       .attr('fill', 'transparent')
-      .attr('stroke', 'red')
+      .attr('stroke', 'green')
       .attr('stroke-width', 1)
 
     var hoverValue = svg.append('text')
@@ -102,8 +102,6 @@
       .attr('y', marginTop + height + 20)
       .attr('text-anchor', 'middle')
 
-    render()
-
     var redrawButton = d3.select('#redraw')
       .on('click', function () {
         randomizeData(10 + Math.floor(Math.random() * 2))
@@ -111,8 +109,10 @@
       })
 
     var morphButton = d3.select('#morph')
-      .on('click', function () {
-      })
+
+    var barChart = false
+
+    render()
 
     // ----------------------------------------------------------------
     // Render Function
@@ -141,24 +141,24 @@
 
       // Drawing the path
       var blankAreaPoints = d3.area()
-        .curve(d3.curveLinear)
+        .curve(d3.curveMonotoneX)
         .x(function (d) { return xScale(moment(d.date)) })
         .y0(marginTop + height)
         .y1(marginTop + height)
 
       var blankLinePoints = d3.line()
-        .curve(d3.curveLinear)
+        .curve(d3.curveMonotoneX)
         .x(function (d) { return xScale(moment(d.date)) })
         .y(marginTop + height)
 
       var areaPoints = d3.area()
-        .curve(d3.curveLinear)
+        .curve(d3.curveMonotoneX)
         .x(function (d) { return xScale(moment(d.date)) })
         .y0(marginTop + height)
         .y1(function (d) { return yScale(d.value) })
 
       var linePoints = d3.line()
-        .curve(d3.curveLinear)
+        .curve(d3.curveMonotoneX)
         .x(function (d) { return xScale(moment(d.date)) })
         .y(function (d) { return yScale(d.value) })
 
@@ -187,9 +187,9 @@
       bars
         .enter()
         .append('rect')
-        .attr('fill', 'red')
+        .attr('fill', 'green')
         .attr('stroke', 'black')
-        .attr('opacity', 0.3)
+        .attr('opacity', 0)
 
       bars
         .exit()
@@ -277,6 +277,105 @@
          .attr('cx', x)
          .attr('cy', y)
       })
+
+      morphButton.on('click', morph)
+
+      function morph () {
+        if (barChart) {
+          line
+            .datum(data)
+            .transition().duration(1000)
+            .attr('d', linePoints)
+            .attrTween('d', pathTween(linePoints(data), 4))
+
+          area
+            .datum(data)
+            .transition().duration(1000)
+            .attr('d', areaPoints)
+            .attrTween('d', pathTween(areaPoints(data), 4))
+
+          var bars = svg.selectAll('rect')
+            .attr('opacity', 0)
+
+          barChart = false
+        } else {
+          var morphData = barToLineIntermediateMorphData()
+
+          line
+            .datum(morphData)
+            .transition().duration(1000)
+            .attr('d', linePoints)
+            .attrTween('d', pathTween(linePoints(morphData), 4))
+
+          area
+            .datum(morphData)
+            .transition().duration(1000)
+            .attr('d', areaPoints)
+            .attrTween('d', pathTween(areaPoints(morphData), 4))
+
+          var bars = svg.selectAll('rect')
+            .transition()
+            .delay(700)
+            .attr('opacity', 0.3)
+
+          barChart = true
+        }
+      }
+
+      function barToLineIntermediateMorphData () {
+        var i = 0
+        var datum = []
+        var left
+        var right
+        var start = xScale.domain()[0].getTime()
+        var end = xScale.domain()[1].getTime()
+        var unit = (end - start) / data.length
+
+        for (i = 0; i < data.length; i++) {
+          left = {}
+          left.date = start + unit * i
+          left.value = data[i].value
+
+          datum.push(left)
+
+          right = {}
+          right.date = start + unit * (i + 1)
+          right.value = data[i].value
+
+          datum.push(right)
+        }
+
+        return datum
+      }
+
+      // =========================================
+      // path tween function by Mike Bostock 
+      // https://gist.github.com/mbostock/3916621
+      // =========================================
+      function pathTween(d1, precision) {
+        return function() {
+          var path0 = this,
+              path1 = path0.cloneNode(),
+              n0 = path0.getTotalLength(),
+              n1 = (path1.setAttribute("d", d1), path1).getTotalLength()
+ 
+          // Uniform sampling of distance based on specified precision.
+          var distances = [0], i = 0, dt = precision / Math.max(n0, n1)
+          while ((i += dt) < 1) distances.push(i)
+          distances.push(1)
+ 
+          // Compute point-interpolators at each distance.
+          var points = distances.map(function(t) {
+            var p0 = path0.getPointAtLength(t * n0),
+                p1 = path1.getPointAtLength(t * n1)
+            return d3.interpolate([p0.x, p0.y], [p1.x, p1.y])
+          })
+ 
+          return function(t) {
+            return t < 1 ? "M" + points.map(function(p) { return p(t) }).join("L") : d1
+          }
+        }
+      }
     }
 
     function getYAtX (x) {
