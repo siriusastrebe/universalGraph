@@ -181,12 +181,13 @@
       // Creating the bars
       var barWidth = (xScale.range()[1] - xScale.range()[0]) / (data.length)
 
-      var bars = svg.selectAll('rect')
+      var bars = svg.selectAll('rect.bar')
         .data(data)
 
       bars
         .enter()
         .append('rect')
+        .attr('class', 'bar')
         .attr('fill', 'green')
         .attr('stroke', 'black')
         .attr('opacity', 0)
@@ -195,7 +196,7 @@
         .exit()
         .remove()
 
-      var bars = svg.selectAll('rect')
+      var bars = svg.selectAll('rect.bar')
           .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
           .attr('width', function (d) { return barWidth })
 
@@ -205,10 +206,37 @@
           .attr('height', 0)
       }
 
-      var bars = svg.selectAll('rect')
+      var bars = svg.selectAll('rect.bar')
         .transition()
         .attr('y', function (d) { return yScale(d.value) })
         .attr('height', function (d) { return (marginTop + height) - yScale(d.value) })
+
+      // Invisible bars for triggering mouseover
+      var hoverBars = svg.selectAll('rect.hover')
+        .data(data)
+        .enter()
+        .append('rect')
+        .attr('class', 'hover')
+        .attr('opacity', 0)
+        .attr('height', height)
+        .attr('y', marginTop)
+        .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
+        .attr('width', function (d) { return barWidth })
+
+      hoverBars
+        .exit()
+        .remove()
+
+      hoverBars.on('mouseover', function (d, i) {
+        var bar = d3.select(bars._groups[0][i])
+        bar.attr('fill', 'red')
+      })
+
+      hoverBars.on('mouseleave', function (d, i) {
+        var bar = d3.select(bars._groups[0][i])
+        bar.attr('fill', 'green')
+      })
+
 
       // Mouse hover
       svg.on('mousemove', function () { 
@@ -263,19 +291,29 @@
             }
           })
 
-        hoverLineY
-          .attr('x2', x)
-          .attr('x1', x)
-          .attr('y1', y)
-
        hoverLineX
          .attr('x2', x)
          .attr('y2', y)
          .attr('y1', y)
 
-       hoverBubble
-         .attr('cx', x)
-         .attr('cy', y)
+       if (barChart) {
+         hoverLineY
+           .attr('opacity', 0)
+
+         hoverBubble
+           .attr('opacity', 0)
+       } else {
+         hoverLineY
+           .attr('opacity', 1)
+           .attr('x2', x)
+           .attr('x1', x)
+           .attr('y1', y)
+
+         hoverBubble
+           .attr('cx', x)
+           .attr('cy', y)
+           .attr('opacity', 1)
+       }
       })
 
       morphButton.on('click', morph)
@@ -294,7 +332,7 @@
             .attr('d', areaPoints)
             .attrTween('d', pathTween(areaPoints(data), 4))
 
-          var bars = svg.selectAll('rect')
+          var bars = svg.selectAll('rect.bar')
             .attr('opacity', 0)
 
           barChart = false
@@ -313,7 +351,7 @@
             .attr('d', areaPoints)
             .attrTween('d', pathTween(areaPoints(morphData), 4))
 
-          var bars = svg.selectAll('rect')
+          var bars = svg.selectAll('rect.bar')
             .transition()
             .delay(700)
             .attr('opacity', 0.3)
