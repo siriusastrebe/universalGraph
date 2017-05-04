@@ -34,7 +34,7 @@
       var randomMonth = Math.floor(Math.random() * 12)
       var timestamp = moment(randomYear)
       timestamp.add(randomMonth, 'months')
-      var period = Math.floor(Math.random() * 31)
+      var period = Math.floor(Math.random() * 31) + 1
 
       for (var i = 0; i < length; i++) {
         data.push({
@@ -44,6 +44,8 @@
 
         if (i < length - 1) { timestamp.add(period, 'days') }
       }
+
+      console.log(data)
     }
 
     randomizeData(12)
@@ -57,28 +59,89 @@
     var marginRight = 20
     var marginTop = 20
     var marginBottom = 20
-
+    var bottom = height + marginTop
+    var right = width + marginLeft
 
     var svg = d3.select('svg')
       .attr('width', marginLeft + width + marginRight)
       .attr('height', marginTop + height + marginBottom)
 
-    var xAxis = svg.append('g').attr('id', 'xAxis')
-      .attr('transform', 'translate(0, ' + (marginTop + height) + ')')
-    var yAxis = svg.append('g').attr('id', 'yAxis')
-      .attr('transform', 'translate(' + marginLeft + ', 0)')
+    var gradient = svg.append("defs")
+        .append("linearGradient")
+        .attr("id", "gradient")
+        .attr("x1", "0%")
+        .attr("x2", "100%")
+        .attr("y1", "0%")
+        .attr("y2", "0%");
+
+    gradient.append("stop")
+        .attr('class', 'start')
+        .attr("offset", "0%")
+        .attr("stop-color", "red")
+        .attr("stop-opacity", 1);
+
+    gradient.append("stop")
+        .attr('class', 'start')
+        .attr("offset", "18%")
+        .attr("stop-color", "orange")
+        .attr("stop-opacity", 1);
+
+    gradient.append("stop")
+        .attr('class', 'start')
+        .attr("offset", "36%")
+        .attr("stop-color", "yellow")
+        .attr("stop-opacity", 1);
+
+    gradient.append("stop")
+        .attr('class', 'end')
+        .attr("offset", "50%")
+        .attr("stop-color", "green")
+        .attr("stop-opacity", 1);
+
+    gradient.append("stop")
+        .attr('class', 'end')
+        .attr("offset", "66%")
+        .attr("stop-color", "blue")
+        .attr("stop-opacity", 1);
+
+    gradient.append("stop")
+        .attr('class', 'start')
+        .attr("offset", "82%")
+        .attr("stop-color", "indigo")
+        .attr("stop-opacity", 1);
+
+    gradient.append("stop")
+        .attr('class', 'start')
+        .attr("offset", "100%")
+        .attr("stop-color", "violet")
+        .attr("stop-opacity", 1);
 
     var area = svg.append('path')
       .attr('id', 'area')
       .attr('stroke', 'black')
-      .attr('fill', 'green')
-      .attr('opacity', 0.4)
+      .attr('fill', 'url(#gradient)')
+      .attr('opacity', 0.7)
+      .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + right + ' ' + bottom + ' Z')
+
+    var areaSkirt = svg.append('rect')
+      .attr('fill', 'white')
+      .attr('stroke', 'transparent')
+      .attr('y', bottom)
+      .attr('x', marginLeft)
+      .attr('width', width)
+      .attr('height', 100)
+
+    var xAxis = svg.append('g').attr('id', 'xAxis')
+      .attr('transform', 'translate(0, ' + (bottom) + ')')
+    var yAxis = svg.append('g').attr('id', 'yAxis')
+      .attr('transform', 'translate(' + marginLeft + ', 0)')
 
     var line = svg.append('path')
       .attr('opacity', 0)
       .attr('id', 'line')
       .attr('stroke', 'black')
       .attr('fill', 'transparent')
+      .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + right + ' ' + bottom + ' Z')
 
     var hoverLineY = svg.append('line')
       .attr('stroke', 'black')
@@ -130,7 +193,7 @@
         .call(xLabels)
 
       var yScale = d3.scaleLinear()
-        .domain(d3.extent(data, function (d) { return d.value }))
+        .domain([0, d3.max(data, function (d) { return d.value })])
         .range([marginTop + height, marginTop])
 
       var yLabels = d3.axisLeft(yScale)
@@ -156,18 +219,29 @@
 
         line.datum(morphData)
         area.datum(morphData)
+
+        area
+          .transition().ease(d3.easeSin).duration(700)
+          .attrTween('d', pathTween(areaPoints(morphData), 4))
+
+        line
+          .transition().ease(d3.easeSin).duration(700)
+          .attrTween('d', pathTween(linePoints(morphData), 4))
+
       } else {
+        var areaData = generateAreaData()
+
         line.datum(data)
-        area.datum(data)
+        area.datum(areaData)
+
+        area
+          .transition().ease(d3.easeSin).duration(700)
+          .attrTween('d', pathTween(areaPoints(areaData), 4))
+
+        line
+          .transition().ease(d3.easeSin).duration(700)
+          .attrTween('d', pathTween(linePoints(data), 4))
       }
-
-      area
-        .transition().duration(700)
-        .attrTween('d', pathTween(areaPoints(data), 4))
-
-      line
-        .transition().duration(700)
-        .attrTween('d', pathTween(linePoints(data), 4))
 
       // Creating the bars
       var barWidth = (xScale.range()[1] - xScale.range()[0]) / (data.length)
@@ -189,11 +263,13 @@
       var bars = svg.selectAll('rect.bar')
           .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
           .attr('width', function (d) { return barWidth })
+          .attr('height', function (d) { return (marginTop + height) - yScale(d.value) })
+          .attr('y', function (d) { return yScale(d.value) })
+          .attr('opacity', 0)
 
       var bars = svg.selectAll('rect.bar')
         .transition()
-        .attr('y', function (d) { return yScale(d.value) })
-        .attr('height', function (d) { return (marginTop + height) - yScale(d.value) })
+        .delay(600)
         .attr('opacity', function () { return barChart ? 0.3 : 0 })
 
       // Invisible bars for triggering mouseover
@@ -203,6 +279,8 @@
         .append('rect')
         .attr('class', 'hover')
         .attr('opacity', 0)
+
+      var hoverBars = svg.selectAll('rect.hover')
         .attr('height', height)
         .attr('y', marginTop)
         .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
@@ -261,7 +339,7 @@
 
 
       // Mouse hover
-      svg.on('mousemove', function () { 
+      svg.on('mousemove', function () {
        if (!barChart) {
 
         var event = d3.event        
@@ -350,17 +428,17 @@
 
       function morph () {
         if (barChart) {
+          var areaData = generateAreaData()
+
           line
             .datum(data)
             .transition().delay(200).duration(1000)
-            .attr('d', linePoints)
             .attrTween('d', pathTween(linePoints(data), 4))
 
           area
             .datum(data)
             .transition().delay(200).duration(1000)
-            .attr('d', areaPoints)
-            .attrTween('d', pathTween(areaPoints(data), 4))
+            .attrTween('d', pathTween(areaPoints(areaData), 4))
 
           var bars = svg.selectAll('rect.bar')
             .transition().duration(500)
@@ -373,13 +451,11 @@
           line
             .datum(morphData)
             .transition().duration(1000)
-            .attr('d', linePoints)
             .attrTween('d', pathTween(linePoints(morphData), 4))
 
           area
             .datum(morphData)
             .transition().duration(1000)
-            .attr('d', areaPoints)
             .attrTween('d', pathTween(areaPoints(morphData), 4))
 
           var bars = svg.selectAll('rect.bar')
@@ -391,6 +467,15 @@
         }
       }
 
+      function generateAreaData () {
+        var datum = []
+        datum.push({value: 0.0, date: data[0].date})
+        datum.push.apply(datum, data)
+        datum.push({value: 0.0, date: data[data.length - 1].date})
+        return datum
+
+      }
+
       function generateMorphData () {
         var i = 0
         var datum = []
@@ -399,6 +484,8 @@
         var start = xScale.domain()[0].getTime()
         var end = xScale.domain()[1].getTime()
         var unit = (end - start) / data.length
+
+        datum.push({value: 0.0, date: data[0].date})
 
         for (i = 0; i < data.length; i++) {
           left = {}
@@ -413,6 +500,8 @@
 
           datum.push(right)
         }
+
+        datum.push({value: 0.0, date: data[data.length - 1].date})
 
         return datum
       }
