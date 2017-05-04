@@ -121,7 +121,7 @@
       .attr('stroke', 'black')
       .attr('fill', 'url(#gradient)')
       .attr('opacity', 0.7)
-      .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + right + ' ' + bottom + ' Z')
+      .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + (right * 1.4) + ' ' + bottom + ' ')
 
     var areaSkirt = svg.append('rect')
       .attr('fill', 'white')
@@ -141,7 +141,6 @@
       .attr('id', 'line')
       .attr('stroke', 'black')
       .attr('fill', 'transparent')
-      .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + right + ' ' + bottom + ' Z')
 
     var hoverLineY = svg.append('line')
       .attr('stroke', 'black')
@@ -303,6 +302,7 @@
             .attr('y', function () { return y > marginTop + 20 ? y - 10 : y + 20 })
             .attr('text-anchor', 'middle')
             .attr('opacity', 1)
+            .attr('fill', function () { return y > marginTop + 20 ? 'black' : 'white' })
             .text(String(d.value).substring(0, 4))
 
           hoverDate
