@@ -26,6 +26,8 @@
     // ----------------------------------------------------------------
     var data = []
     var previousData = []
+    var redrawing = false;
+    var redrawDuration = 800;
 
     function randomizeData (length) {
       previousData = data
@@ -61,6 +63,8 @@
     var marginBottom = 20
     var bottom = height + marginTop
     var right = width + marginLeft
+
+    var timeFormat = d3.timeFormat("%B %d")
 
     var svg = d3.select('svg')
       .attr('width', marginLeft + width + marginRight)
@@ -123,14 +127,6 @@
       .attr('opacity', 0.7)
       .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + (right * 1.4) + ' ' + bottom + ' ')
 
-    var areaSkirt = svg.append('rect')
-      .attr('fill', 'white')
-      .attr('stroke', 'transparent')
-      .attr('y', bottom)
-      .attr('x', marginLeft)
-      .attr('width', width)
-      .attr('height', 100)
-
     var xAxis = svg.append('g').attr('id', 'xAxis')
       .attr('transform', 'translate(0, ' + (bottom) + ')')
     var yAxis = svg.append('g').attr('id', 'yAxis')
@@ -158,17 +154,27 @@
       .attr('stroke-width', 1)
 
     var hoverValue = svg.append('text')
-      .attr('x', marginLeft)
+      .attr('x', marginLeft - 9)
       .attr('text-anchor', 'end')
+      .attr('font-size', 10)
+      .attr('font-family', 'Verdana') 
 
     var hoverDate = svg.append('text')
-      .attr('y', marginTop + height + 20)
+      .attr('y', marginTop + height + 16)
       .attr('text-anchor', 'middle')
+      .attr('font-size', 10)
+      .attr('font-family', 'Verdana') 
 
     var redrawButton = d3.select('#redraw')
       .on('click', function () {
-        randomizeData(9 + Math.floor(Math.random() * 4))
-        render()
+        if (redrawing === false) {
+          redrawing = true;
+          randomizeData(9 + Math.floor(Math.random() * 4))
+          render()
+          setTimeout(function () {
+            redrawing = false;
+          }, redrawDuration)
+        }
       })
 
     var morphButton = d3.select('#morph')
@@ -187,6 +193,8 @@
         .range([marginLeft, marginLeft + width])
 
       var xLabels = d3.axisBottom(xScale)
+        .tickFormat(timeFormat)
+        .ticks(6)
 
       xAxis.transition()
         .call(xLabels)
@@ -196,10 +204,15 @@
         .range([marginTop + height, marginTop])
 
       var yLabels = d3.axisLeft(yScale)
+        .tickFormat(d3.format('.2f'))
         .ticks(6)
 
       yAxis.transition()
         .call(yLabels)
+
+      d3.selectAll('.tick text')
+        .attr('font-size', 10)
+        .attr('font-family', 'Verdana') 
 
       // Drawing the path
       var areaPoints = d3.area()
@@ -224,8 +237,7 @@
           .attrTween('d', pathTween(areaPoints(morphData), 4))
 
         line
-          .transition().ease(d3.easeSin).duration(700)
-          .attrTween('d', pathTween(linePoints(morphData), 4))
+          .attr('d', linePoints(morphData))
 
       } else {
         var areaData = generateAreaData()
@@ -238,8 +250,7 @@
           .attrTween('d', pathTween(areaPoints(areaData), 4))
 
         line
-          .transition().ease(d3.easeSin).duration(700)
-          .attrTween('d', pathTween(linePoints(data), 4))
+          .attr('d', linePoints(data))
       }
 
       // Creating the bars
@@ -307,7 +318,7 @@
 
           hoverDate
             .attr('x', function () { return x })
-            .text(moment(d.date).format('MM-DD'))
+            .text(timeFormat(d.date))
 
           // Hide x axis value indicators when hovering
           svg.selectAll('#xAxis .tick')
@@ -337,11 +348,9 @@
         }
       })
 
-
       // Mouse hover
       svg.on('mousemove', function () {
        if (!barChart) {
-
         var event = d3.event        
         var x = event.offsetX
       
@@ -356,7 +365,7 @@
         hoverValue
           .attr('y', y)
           .attr('text-anchor', 'end')
-          .attr('x', marginLeft)
+          .attr('x', marginLeft - 9)
           .attr('opacity', 1)
           .text(String(value).substring(0, 4))
 
@@ -378,7 +387,7 @@
 
         hoverDate
           .attr('x', x)
-          .text(moment(date).format('MM-DD'))
+          .text(timeFormat(date))
 
         // Hide x axis value indicators when hovering
         svg.selectAll('#xAxis .tick')
@@ -387,7 +396,7 @@
             var transform = tick.attr('transform')
             var transformX = transform.substring(transform.indexOf('(') + 1, transform.indexOf(','))
 
-            if (Math.abs(Number(transformX) - x) < 50) {
+            if (Math.abs(Number(transformX) - x) < 80) {
               tick.transition().duration(100)
                 .attr('opacity', 0)
             } else {
@@ -427,43 +436,49 @@
       morphButton.on('click', morph)
 
       function morph () {
-        if (barChart) {
-          var areaData = generateAreaData()
+        if (redrawing === false) {
+          redrawing = true
 
-          line
-            .datum(data)
-            .transition().delay(200).duration(1000)
-            .attrTween('d', pathTween(linePoints(data), 4))
+          if (barChart) {
+            var areaData = generateAreaData()
 
-          area
-            .datum(data)
-            .transition().delay(200).duration(1000)
-            .attrTween('d', pathTween(areaPoints(areaData), 4))
+            line
+              .datum(data)
+              .attr('d', linePoints(data))
 
-          var bars = svg.selectAll('rect.bar')
-            .transition().duration(500)
-            .attr('opacity', 0)
+            area
+              .datum(data)
+              .transition().delay(200).duration(1000)
+              .attrTween('d', pathTween(areaPoints(areaData), 4))
+  
+            var bars = svg.selectAll('rect.bar')
+              .transition().duration(500)
+              .attr('opacity', 0)
+  
+            barChart = false
+          } else {
+            var morphData = generateMorphData()
+  
+            line
+              .datum(morphData)
+              .attr('d', linePoints(morphData))
+  
+            area
+              .datum(morphData)
+              .transition().duration(1000)
+              .attrTween('d', pathTween(areaPoints(morphData), 4))
+  
+            var bars = svg.selectAll('rect.bar')
+              .transition()
+              .delay(700)
+              .attr('opacity', 0.3)
+  
+            barChart = true
+          }
 
-          barChart = false
-        } else {
-          var morphData = generateMorphData()
-
-          line
-            .datum(morphData)
-            .transition().duration(1000)
-            .attrTween('d', pathTween(linePoints(morphData), 4))
-
-          area
-            .datum(morphData)
-            .transition().duration(1000)
-            .attrTween('d', pathTween(areaPoints(morphData), 4))
-
-          var bars = svg.selectAll('rect.bar')
-            .transition()
-            .delay(700)
-            .attr('opacity', 0.3)
-
-          barChart = true
+          setTimeout(function () {
+            redrawing = false
+          }, redrawDuration)
         }
       }
 
@@ -473,7 +488,6 @@
         datum.push.apply(datum, data)
         datum.push({value: 0.0, date: data[data.length - 1].date})
         return datum
-
       }
 
       function generateMorphData () {
@@ -542,14 +556,17 @@
 
       return search(0, lineLength)
 
-      function search (lower, upper) {
+      function search (lower, upper, iterations) {
+        if (!iterations) iterations = 1
+        if (iterations > 10) return
+
         var coords = lineNode.getPointAtLength((lower + upper) / 2)
         if (Math.abs(coords.x - x) < 2) {
           return coords.y
         } else if (coords.x > x) {
-          return search(lower, (lower + upper) / 2)
+          return search(lower, (lower + upper) / 2, iterations + 1)
         } else {
-          return search((lower + upper) / 2, upper)
+          return search((lower + upper) / 2, upper, iterations + 1)
         }
       }
     }
