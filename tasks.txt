@@ -1,4 +1,5 @@
 HoverBar weird render bug
+HoverBubble offset on edges of graph
 Tooltip toggling/Graph Resizing
 Json Input
 Rework UI
