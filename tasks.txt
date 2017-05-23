@@ -1,0 +1,4 @@
+HoverBar weird render bug
+Tooltip toggling/Graph Resizing
+Json Input
+Rework UI

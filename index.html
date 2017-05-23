@@ -50,6 +50,20 @@
       console.log(data)
     }
 
+    d3.selection.prototype.moveToFront = function() {  
+      return this.each(function(){
+        this.parentNode.appendChild(this)
+      })
+    }
+    d3.selection.prototype.moveToBack = function() {  
+        return this.each(function() { 
+            var firstChild = this.parentNode.firstChild 
+            if (firstChild) { 
+                this.parentNode.insertBefore(this, firstChild) 
+            } 
+        })
+    }
+
     randomizeData(12)
 
     // ----------------------------------------------------------------
@@ -124,7 +138,7 @@
       .attr('id', 'area')
       .attr('stroke', 'black')
       .attr('fill', 'url(#gradient)')
-      .attr('opacity', 0.7)
+      .attr('opacity', 1)
       .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + (right * 1.4) + ' ' + bottom + ' ')
 
     var xAxis = svg.append('g').attr('id', 'xAxis')
@@ -196,7 +210,7 @@
         .tickFormat(timeFormat)
         .ticks(6)
 
-      xAxis.transition()
+      xAxis.transition().duration(700)
         .call(xLabels)
 
       var yScale = d3.scaleLinear()
@@ -205,14 +219,20 @@
 
       var yLabels = d3.axisLeft(yScale)
         .tickFormat(d3.format('.2f'))
+        .tickSize(-width)
         .ticks(6)
 
-      yAxis.transition()
+      yAxis.transition().duration(700)
         .call(yLabels)
 
       d3.selectAll('.tick text')
         .attr('font-size', 10)
         .attr('font-family', 'Verdana') 
+
+      d3.selectAll('.tick')
+        .attr('stroke-width', 0.3)
+        .attr('opacity', 0.3)
+
 
       // Drawing the path
       var areaPoints = d3.area()
@@ -253,6 +273,8 @@
           .attr('d', linePoints(data))
       }
 
+      area.moveToFront()
+
       // Creating the bars
       var barWidth = (xScale.range()[1] - xScale.range()[0]) / (data.length)
 
@@ -269,6 +291,12 @@
       bars
         .exit()
         .remove()
+
+      bars.moveToFront()
+      hoverValue.moveToFront()
+      hoverLineX.moveToFront()
+      hoverLineY.moveToFront()
+      hoverBubble.moveToFront()
 
       var bars = svg.selectAll('rect.bar')
           .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
@@ -324,14 +352,15 @@
           svg.selectAll('#xAxis .tick')
             .each(function () {
               var tick = d3.select(this)
+              var text = tick.select('text')
               var transform = tick.attr('transform')
               var transformX = transform.substring(transform.indexOf('(') + 1, transform.indexOf(','))
 
               if (Math.abs(Number(transformX) - x) < 50) {
-                tick.transition().duration(100)
+                text.transition().duration(100)
                   .attr('opacity', 0)
               } else {
-                tick.transition().duration(100)
+                text.transition().duration(100)
                   .attr('opacity', 1)
               }
             })
@@ -373,14 +402,15 @@
         svg.selectAll('#yAxis .tick')
           .each(function () {
             var tick = d3.select(this)
+            var text = tick.select('text')
             var transform = tick.attr('transform')
             var transformY = transform.substring(transform.indexOf(',') + 1, transform.length - 1)
 
             if (Math.abs(Number(transformY) - y) < 30) {
-              tick.transition().duration(100)
+              text.transition().duration(100)
                 .attr('opacity', 0)
             } else {
-              tick.transition().duration(100)
+              text.transition().duration(100)
                 .attr('opacity', 1)
             }
           })
@@ -570,6 +600,5 @@
         }
       }
     }
-
   </script>
 </html>
