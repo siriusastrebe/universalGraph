@@ -262,7 +262,7 @@
       } else {
         var areaData = generateAreaData()
 
-        line.datum(data)
+        line.datum(areaData)
         area.datum(areaData)
 
         area
@@ -270,13 +270,11 @@
           .attrTween('d', pathTween(areaPoints(areaData), 4))
 
         line
-          .attr('d', linePoints(data))
+          .attr('d', linePoints(areaData))
       }
 
-      area.moveToFront()
-
       // Creating the bars
-      var barWidth = (xScale.range()[1] - xScale.range()[0]) / (data.length)
+      var barWidth = (xScale.range()[1] - xScale.range()[0]) / data.length
 
       var bars = svg.selectAll('rect.bar')
         .data(data)
@@ -292,14 +290,8 @@
         .exit()
         .remove()
 
-      bars.moveToFront()
-      hoverValue.moveToFront()
-      hoverLineX.moveToFront()
-      hoverLineY.moveToFront()
-      hoverBubble.moveToFront()
-
       var bars = svg.selectAll('rect.bar')
-          .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
+          .attr('x', function (d, i) { return xScale.range()[0] + barWidth * i })
           .attr('width', function (d) { return barWidth })
           .attr('height', function (d) { return (marginTop + height) - yScale(d.value) })
           .attr('y', function (d) { return yScale(d.value) })
@@ -309,6 +301,8 @@
         .transition()
         .delay(600)
         .attr('opacity', function () { return barChart ? 0.3 : 0 })
+
+      var bars = svg.selectAll('rect.bar')
 
       // Invisible bars for triggering mouseover
       var hoverBars = svg.selectAll('rect.hover')
@@ -321,12 +315,21 @@
       var hoverBars = svg.selectAll('rect.hover')
         .attr('height', height)
         .attr('y', marginTop)
-        .attr('x', function (d, i) { return xScale(d.date) - (barWidth * (i / (data.length - 1))) })
+        .attr('x', function (d, i) { return xScale.range()[0] + barWidth * i })
         .attr('width', function (d) { return barWidth })
 
       hoverBars
         .exit()
         .remove()
+
+      area.moveToFront()
+      bars.moveToFront()
+      hoverBars.moveToFront()
+      hoverValue.moveToFront()
+      hoverLineX.moveToFront()
+      hoverLineY.moveToFront()
+      hoverBubble.moveToFront()
+
 
       hoverBars.on('mouseover', function (d, i) {
         if (barChart) {
@@ -383,8 +386,8 @@
         var event = d3.event        
         var x = event.offsetX
       
-        if (x < marginLeft) x = marginLeft
-        if (x > marginLeft + width) x = marginLeft + width
+        if (x < marginLeft + 2) x = marginLeft + 2
+        if (x > marginLeft + width - 2) x = marginLeft + width - 2
 
         var y = getYAtX(x)
 
@@ -394,7 +397,7 @@
         hoverValue
           .attr('y', y)
           .attr('text-anchor', 'end')
-          .attr('x', marginLeft - 9)
+          .attr('x', marginLeft - 3)
           .attr('opacity', 1)
           .text(String(value).substring(0, 4))
 
@@ -474,7 +477,7 @@
 
             line
               .datum(data)
-              .attr('d', linePoints(data))
+              .attr('d', linePoints(areaData))
 
             area
               .datum(data)
