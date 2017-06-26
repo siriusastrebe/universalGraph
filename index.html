@@ -8,17 +8,46 @@
       display: block;
     }
 
-/*
-    svg {
-      margin-left: 400px;
+    #content {
+      width: 100vw;
     }
-*/
+
+    svg {
+      display: inline-block;
+    }
+
+    textarea {
+      min-width: 300px;
+    }
+
+    #header {
+      display: flex;
+      flex-direction: row;
+      align-items: start;
+      min-width: 400px;
+    }
   </style>
 </head>
 <body>
-<button id="redraw">Redraw</button>
-<button id="morph">Morph</button>
-<svg></svg>
+
+<div id="header">
+  <div>
+    <input type="radio" name="size" value="small" checked="checked" onchange="resize(0)">Minimal<br>
+    <input type="radio" name="size" value="large" onchange="resize(1)">Full Size<br>
+  </div>
+
+  <div>
+    <button id="redraw">Randomize Data</button>
+    <button id="morph">Morph to bar/line</button>
+  </div>
+</div>
+
+<div id="content">
+  <svg></svg>
+  <textarea name="json" id="json"></textarea>
+</div>
+
+
 </body>
   <script type="text/javascript">
     // ----------------------------------------------------------------
@@ -26,8 +55,8 @@
     // ----------------------------------------------------------------
     var data = []
     var previousData = []
-    var redrawing = false;
-    var redrawDuration = 800;
+    var redrawing = false
+    var redrawDuration = 800
 
     function randomizeData (length) {
       previousData = data
@@ -46,8 +75,10 @@
 
         if (i < length - 1) { timestamp.add(period, 'days') }
       }
+      var datastring = JSON.stringify(data, null, '\t')
 
-      console.log(data)
+      d3.select('#json')
+        .text(datastring)
     }
 
     d3.selection.prototype.moveToFront = function() {  
@@ -69,14 +100,12 @@
     // ----------------------------------------------------------------
     // Graph initialization
     // ----------------------------------------------------------------
-    var width = 1220
-    var height = 440
+    var width = 600
+    var height = 300
     var marginLeft = 40
     var marginRight = 20
     var marginTop = 20
     var marginBottom = 20
-    var bottom = height + marginTop
-    var right = width + marginLeft
 
     var timeFormat = d3.timeFormat("%B %d")
 
@@ -87,64 +116,63 @@
     var gradient = svg.append("defs")
         .append("linearGradient")
         .attr("id", "gradient")
-        .attr("x1", "0%")
-        .attr("x2", "100%")
+        .attr("x1", "100%")
+        .attr("x2", "0%")
         .attr("y1", "0%")
-        .attr("y2", "0%");
+        .attr("y2", "100%")
 
     gradient.append("stop")
         .attr('class', 'start')
         .attr("offset", "0%")
         .attr("stop-color", "red")
-        .attr("stop-opacity", 1);
+        .attr("stop-opacity", 1)
 
     gradient.append("stop")
         .attr('class', 'start')
         .attr("offset", "18%")
         .attr("stop-color", "orange")
-        .attr("stop-opacity", 1);
+        .attr("stop-opacity", 1)
 
     gradient.append("stop")
         .attr('class', 'start')
         .attr("offset", "36%")
         .attr("stop-color", "yellow")
-        .attr("stop-opacity", 1);
+        .attr("stop-opacity", 1)
 
     gradient.append("stop")
         .attr('class', 'end')
         .attr("offset", "50%")
         .attr("stop-color", "green")
-        .attr("stop-opacity", 1);
+        .attr("stop-opacity", 1)
 
     gradient.append("stop")
         .attr('class', 'end')
         .attr("offset", "66%")
         .attr("stop-color", "blue")
-        .attr("stop-opacity", 1);
+        .attr("stop-opacity", 1)
 
     gradient.append("stop")
         .attr('class', 'start')
         .attr("offset", "82%")
         .attr("stop-color", "indigo")
-        .attr("stop-opacity", 1);
+        .attr("stop-opacity", 1)
 
     gradient.append("stop")
         .attr('class', 'start')
         .attr("offset", "100%")
         .attr("stop-color", "violet")
-        .attr("stop-opacity", 1);
+        .attr("stop-opacity", 1)
 
     var area = svg.append('path')
       .attr('id', 'area')
       .attr('stroke', 'black')
+      .attr('stroke-width', 2)
       .attr('fill', 'url(#gradient)')
       .attr('opacity', 1)
-      .attr('d', 'M' + marginLeft + ' ' + bottom + ' L' + (right * 1.4) + ' ' + bottom + ' ')
+      .attr('d', 'M' + marginLeft + ' ' + (height + marginTop) + ' L' + (marginLeft + width * 1.4) + ' ' + (height + marginTop) + ' ')
 
     var xAxis = svg.append('g').attr('id', 'xAxis')
-      .attr('transform', 'translate(0, ' + (bottom) + ')')
     var yAxis = svg.append('g').attr('id', 'yAxis')
-      .attr('transform', 'translate(' + marginLeft + ', 0)')
 
     var line = svg.append('path')
       .attr('opacity', 0)
@@ -182,11 +210,11 @@
     var redrawButton = d3.select('#redraw')
       .on('click', function () {
         if (redrawing === false) {
-          redrawing = true;
+          redrawing = true
           randomizeData(9 + Math.floor(Math.random() * 4))
           render()
           setTimeout(function () {
-            redrawing = false;
+            redrawing = false
           }, redrawDuration)
         }
       })
@@ -195,6 +223,7 @@
 
     var barChart = false
 
+    resize(0)
     render()
 
     // ----------------------------------------------------------------
@@ -211,6 +240,7 @@
         .ticks(6)
 
       xAxis.transition().duration(700)
+        .attr('transform', 'translate(0, ' + (height + marginTop) + ')')
         .call(xLabels)
 
       var yScale = d3.scaleLinear()
@@ -223,6 +253,7 @@
         .ticks(6)
 
       yAxis.transition().duration(700)
+        .attr('transform', 'translate(' + marginLeft + ', 0)')
         .call(yLabels)
 
       d3.selectAll('.tick text')
@@ -283,7 +314,7 @@
         .enter()
         .append('rect')
         .attr('class', 'bar')
-        .attr('fill', 'green')
+        .attr('fill', 'transparent')
         .attr('stroke', 'black')
 
       bars
@@ -300,7 +331,7 @@
       var bars = svg.selectAll('rect.bar')
         .transition()
         .delay(600)
-        .attr('opacity', function () { return barChart ? 0.3 : 0 })
+        .attr('opacity', function () { return barChart ? 0.5 : 0 })
 
       var bars = svg.selectAll('rect.bar')
 
@@ -348,6 +379,7 @@
             .text(String(d.value).substring(0, 4))
 
           hoverDate
+            .attr('y', marginTop + height + 16)
             .attr('x', function () { return x })
             .text(timeFormat(d.date))
 
@@ -373,7 +405,7 @@
       hoverBars.on('mouseleave', function (d, i) {
         if (barChart) {
           var bar = d3.select(bars._groups[0][i])
-          bar.attr('fill', 'green')
+          bar.attr('fill', 'transparent')
 
           hoverValue
             .attr('opacity', 0)
@@ -420,6 +452,7 @@
 
         hoverDate
           .attr('x', x)
+          .attr('y', marginTop + height + 16)
           .text(timeFormat(date))
 
         // Hide x axis value indicators when hovering
@@ -449,6 +482,7 @@
            .attr('x2', x)
            .attr('x1', x)
            .attr('y1', y)
+           .attr('y2', marginTop + height)
 
          hoverBubble
            .attr('cx', x)
@@ -504,7 +538,7 @@
             var bars = svg.selectAll('rect.bar')
               .transition()
               .delay(700)
-              .attr('opacity', 0.3)
+              .attr('opacity', 0.5)
   
             barChart = true
           }
@@ -581,6 +615,34 @@
           }
         }
       }
+    }
+
+    function resize (size) {
+      var windowWidth = window.innerWidth || document.body.clientWidth
+      if (size === 0) {
+        width = 600
+        height = 300
+
+        d3.select('#json').transition().duration(700)
+          .style('width', windowWidth - width - marginLeft - marginRight - 30 + 'px')
+          .style('height', height + 'px')
+          .style('margin-bottom', marginBottom - 3 + 'px')
+      } else {
+        width = windowWidth - marginLeft - marginRight - 30
+        height = 400
+
+        d3.select('#json')
+          .transition().duration(700)
+          .style('width', (windowWidth - 30) + 'px')
+          .style('height', '400px')
+      }
+
+      svg
+        .transition().duration(700)
+        .attr('width', marginLeft + width + marginRight)
+        .attr('height', marginTop + height + marginBottom)
+
+      render()
     }
 
     function getYAtX (x) {
