@@ -4,12 +4,13 @@
   <script src="d3.v4.js"></script>
   <script src="moment.js"></script>
   <style>
-    #redraw, #morph {
-      display: block;
-    }
-
     #content {
       width: 100vw;
+    }
+
+    button {
+      width: 200px;
+      display: inline-block;
     }
 
     svg {
@@ -22,29 +23,38 @@
 
     #header {
       display: flex;
-      flex-direction: row;
-      align-items: start;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       min-width: 400px;
+    }
+
+    .size {
+      display: flex;
+      flex-direction: row;
+      align-items: middle;
+      justify-content: center;
     }
   </style>
 </head>
 <body>
 
 <div id="header">
-  <div>
-    <input type="radio" name="size" value="small" checked="checked" onchange="resize(0)">Minimal<br>
-    <input type="radio" name="size" value="large" onchange="resize(1)">Full Size<br>
-  </div>
-
-  <div>
+  <div class="size">
     <button id="redraw">Randomize Data</button>
     <button id="morph">Morph to bar/line</button>
   </div>
+
+  <div class="size">
+    <input type="radio" name="size" value="small" onchange="resize(0)">Minimal</input><br />
+    <input type="radio" name="size" value="large" checked="checked" onchange="resize(1)">Full Size</input>
+  </div>
+
 </div>
 
 <div id="content">
   <svg></svg>
-  <textarea name="json" id="json"></textarea>
+  <textarea name="json" id="json" onchange="parse()"></textarea>
 </div>
 
 
@@ -77,8 +87,25 @@
       }
       var datastring = JSON.stringify(data, null, '\t')
 
-      d3.select('#json')
-        .text(datastring)
+      var textarea = document.getElementById('json')
+      textarea.value = datastring  
+    }
+
+    function parse () {
+      var textarea = document.getElementById('json')
+
+      try {
+        data = JSON.parse(textarea.value)
+
+        d3.select(textarea)
+          .style('border', '1px solid black')
+
+        render()
+      } catch (e) {
+        console.log('parse error', e)
+        d3.select(textarea)
+          .style('border', '3px solid red')
+      }
     }
 
     d3.selection.prototype.moveToFront = function() {  
@@ -116,10 +143,10 @@
     var gradient = svg.append("defs")
         .append("linearGradient")
         .attr("id", "gradient")
-        .attr("x1", "100%")
-        .attr("x2", "0%")
+        .attr("x1", "0%")
+        .attr("x2", "100%")
         .attr("y1", "0%")
-        .attr("y2", "100%")
+        .attr("y2", "0%")
 
     gradient.append("stop")
         .attr('class', 'start')
@@ -223,13 +250,14 @@
 
     var barChart = false
 
-    resize(0)
+    resize(1)
     render()
 
     // ----------------------------------------------------------------
     // Render Function
     // ----------------------------------------------------------------
     function render () {
+console.log(data);
       // Scale setup
       var xScale = d3.scaleTime()
         .domain(d3.extent(data, function (d) { return moment(d.date) }))
@@ -237,9 +265,9 @@
 
       var xLabels = d3.axisBottom(xScale)
         .tickFormat(timeFormat)
-        .ticks(6)
+        .ticks(2)
 
-      xAxis.transition().duration(700)
+      xAxis.transition().duration(500)
         .attr('transform', 'translate(0, ' + (height + marginTop) + ')')
         .call(xLabels)
 
@@ -252,7 +280,7 @@
         .tickSize(-width)
         .ticks(6)
 
-      yAxis.transition().duration(700)
+      yAxis.transition().duration(500)
         .attr('transform', 'translate(' + marginLeft + ', 0)')
         .call(yLabels)
 
@@ -284,7 +312,7 @@
         area.datum(morphData)
 
         area
-          .transition().ease(d3.easeSin).duration(700)
+          .transition().ease(d3.easeSin).duration(500)
           .attrTween('d', pathTween(areaPoints(morphData), 4))
 
         line
@@ -297,7 +325,7 @@
         area.datum(areaData)
 
         area
-          .transition().ease(d3.easeSin).duration(700)
+          .transition().ease(d3.easeSin).duration(500)
           .attrTween('d', pathTween(areaPoints(areaData), 4))
 
         line
@@ -330,7 +358,7 @@
 
       var bars = svg.selectAll('rect.bar')
         .transition()
-        .delay(600)
+        .delay(400)
         .attr('opacity', function () { return barChart ? 0.5 : 0 })
 
       var bars = svg.selectAll('rect.bar')
@@ -365,6 +393,9 @@
       hoverBars.on('mouseover', function (d, i) {
         if (barChart) {
           var bar = d3.select(bars._groups[0][i])
+
+          if (!bar) return
+
           bar.attr('fill', 'red')
 
           var y = Number(bar.attr('y'))
@@ -515,7 +546,7 @@
 
             area
               .datum(data)
-              .transition().delay(200).duration(1000)
+              .transition().delay(200).duration(500)
               .attrTween('d', pathTween(areaPoints(areaData), 4))
   
             var bars = svg.selectAll('rect.bar')
@@ -532,12 +563,12 @@
   
             area
               .datum(morphData)
-              .transition().duration(1000)
+              .transition().duration(500)
               .attrTween('d', pathTween(areaPoints(morphData), 4))
   
             var bars = svg.selectAll('rect.bar')
               .transition()
-              .delay(700)
+              .delay(500)
               .attr('opacity', 0.5)
   
             barChart = true
